@@ -83,7 +83,7 @@ class App extends React.Component {
   updateUserHistory(selectedProductId) {
     return Number(selectedProductId) > 0 && Number(selectedProductId) < 101
       ? Axios.post(
-          "http://fec-lowes-carousel.us-east-2.elasticbeanstalk.com/users",
+          "http://localhost:3000/users",
           {
             itemId: selectedProductId
           },
@@ -100,7 +100,7 @@ class App extends React.Component {
     return Number(this.state.productId) > 0 &&
       Number(this.state.productId) < 101
       ? Axios.get(
-          `http://fec-lowes-carousel.us-east-2.elasticbeanstalk.com/carousels?id=${this.state.productId}`,
+          `http://localhost:3000/carousels?id=${this.state.productId}`,
           { withCredentials: true }
         )
       : new Promise((res, rej) => {

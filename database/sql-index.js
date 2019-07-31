@@ -1,9 +1,11 @@
-const mysql = require('mysql');
+const mysql  = require('mysql');
 const CONFIG = require("../config/db.config.mysql.json")
+const knex   = require('knex') (CONFIG);
 
 console.log('yo dawg, DB here')
 
-const knex = require('knex') (CONFIG);
+
+// SCHEMA BUILDING & SETUP
 
 const imagesSchema = () => {
   knex.schema.createTable('images', (table) => {
@@ -31,6 +33,7 @@ const userHistorySchema = () => {
     table.increments('id').primary();
     table.integer('userid').nullable();
     table.integer('imageid').nullable();
+    
     // add foreign keys:
     table.foreign('userid').references('users.id');
     table.foreign('imageid').references('images.id');
@@ -59,6 +62,9 @@ const insertData = (generated, cb) => {
   }, 18000)
 };
 
+
+// MAIN DATABASE METHODS
+
 const selectAll = (cb) => {
   knex.select().from('images')
   .then( result => {
@@ -71,10 +77,10 @@ const selectAll = (cb) => {
 };
 
 const selectOneById = (itemId) => {
-  return knex
-    .from('images')
-    .where({id : itemId})
-    .select()
+  return (
+    knex('images')
+      .where({id : itemId})
+  );
 };
 
 const selectOneByName = (itemName, cb) => {
@@ -92,113 +98,129 @@ const selectOneByName = (itemName, cb) => {
     });
 };
 
-const selectRelated = (item, cb) => {
-  const qValues = [item.name, item.category, item.subcategory];
-
-  knex('images')
-    .whereNot({
-      name        : qValues[0],
-      subCategory : qValues[2]
-    })
-    .where({category : qValues[1]})
-    .select('id', 'name', 'src', 'alt')
-    .then( result => {
-      console.log('knex query result: ', result);
-      cb(null, result)
-    })
-    .catch( error => {
-      console.log('knex error: ', error);
-      cb(error)
-    });
+const selectRelated = (item) => {
+  console.log('db.selectRelated recieved this item from server: ', item);
+  return (
+    knex('images')
+      .where(knex.raw(`category = '${item.category}'`))
+      .where(knex.raw(`name != '${item.name}'`))
+      .where(knex.raw(`subCategory != '${item.subCategory}'`))
+      .select('id', 'name', 'src', 'alt')
+      .limit(15)
+  );
 };
 
-const selectSameCategory = (item, cb) => {
-  const qValues = [item.name, item.subcategory];
+const selectSameCategory = async (item) => {
+  console.log('db.selectSameCategory recieved this item from server: ', item);
 
-  knex('images')
-    .whereNot({subCategory : qValues[1]})
-    .where({name : qValues[0]})
-    .select('id', 'name', 'src', 'alt')
-    .then( result => {
-      console.log('knex query result: ', result);
-      cb(null, result)
-    })
-    .catch( error => {
-      console.log('knex error: ', error);
-      cb(error)
-    });
+  return (
+    knex('images')
+      .where(knex.raw(`name = '${item.name}'`))
+      .where(knex.raw(`subCategory != '${item.subCategory}'`))
+      .select('id', 'name', 'src', 'alt')
+  );
 };
 
-const createUser = (userSesh, cb) => {
+const createUser = (userSesh) => {
   knex('users').insert({session: userSesh})
   .then( result => {
-    console.log('knex query result: ', result);
-    cb(null, result)
+    console.log('knex createUser query result: ', result);
+    return result;
   })
   .catch( error => {
-    console.log('knex error: ', error);
-    cb(error)
+    console.log('knex createUser error: ', error);
   });
 };
 
-const getUser = (userSesh, cb) => {
-  knex('users').where({session : userSesh})
-  .then( result => {
-    console.log('knex query result: ', result);
-    cb(null, result)
-  })
-  .catch( error => {
-    console.log('knex error: ', error);
-    cb(error)
-  });
+const getUser = (userSesh) => {
+  return ( 
+    knex('users').where( {session : userSesh} )
+  );
 };
 
 const recordView = (userId, itemId, cb) => {
-  const qText = `INSERT INTO userHistory (userId, imageId) VALUES ($1, $2)`;
-  const qValues = [userId, itemId];
-
+  console.log('db.recordView recieved this item from server: ', itemId)
   knex('userHistory').insert({
-    userId : qValues[0],
-    itemId : qValues[1]
+    userid : userId,
+    imageid : itemId
   })
   .then( result => {
-    console.log('knex query result: ', result);
-    cb(null, result)
+    console.log('knex recordView query result: ', result);
+    return result;
   })
   .catch( error => {
-    console.log('knex error: ', error);
-    cb(error)
+    console.log('knex recordView error: ', error);
   });
 };
 
-const getUserHistory = (userSesh, itemId, cb) => {
-  const qText = `
-    SELECT 
-      images.id, 
-      images.name, 
-      images.src, 
-      images.alt 
-    FROM 
-      images, 
-      userHistory, 
-      users 
-    WHERE 
-          images.id = userHistory.imageId 
-      AND users.id = userHistory.userId 
-      AND users.session = $1 
-      AND images.id != $2
-    ORDER BY 
-      userHistory.id DESC;`;
+const getUserHistory = (userSesh, itemId) => {
+  console.log('db.getUesrHistory recieved this sesh and item from server: ', userSesh, itemId);
+  return knex.raw(`
+  SELECT
+    images.id,
+    images.name,
+    images.src,
+    images.alt
+  FROM
+    images,
+    userHistory,
+    users
+  WHERE
+    images.id = userHistory.imageid
+    AND users.id = userHistory.userid
+    AND users.session = 78377640453801846575423308121131
+    AND images.id != 11
+  ORDER BY
+    userhistory.id DESC
+  `)
 
-  const qValues = [itemId];
+  // knex(knex.raw('images, userHistory, users')) // from tables in ...args
+  //   .orderBy('userHistory.id', 'desc')
+  //   .whereNot({'images.id' : itemId})
+  //   .where({
+  //     'images.id'     : userHistory.imageid,
+  //     'users.id'      : userHistory.userid,
+  //     'users.session' : userSesh,
+  //   })
+  //   .select('images.id', 'images.name', 'images.src', 'images.alt')
+    // .then( result => {
+    //   console.log('knex getUserHistory query result: ', result);
+    //   return result;
+    // })
+    // .catch( error => {
+    //   console.log('knex getUserHistory error: ', error);
+    // })
+}
 
-  knex(knex.raw('images, userHistory, users'))
-    .orderBy('userHistory.id', 'desc')
-    .where({
-      'images.id' : userHistory.imagesId,
-      'users.id'  : userHistory
-    })
 
+const getAlsoViewedFiller = (itemId) => {
+  console.log('db.getAlsoViewedFiller recieved this itemid from server: ', itemId);
+  // return knex(knex.raw('images', 'userHistory', 'users'))
+  //   .where( {'images.id' : userHistory.imageid} )
+  //   .where(knex.raw('images.id = userHistory.imageid'))
+  //   .where(knex.raw('users.id = userHistory.userid'))
+  //   .where(knex.raw(`images.id != ${itemId}`))
+  //   .limit(15)
+  //   .orderByRaw('rand() <0.15 dsafsadffad')
+  //   .distinct('images.id', 'images.name', 'images.src', 'images.alt')
+  return knex.raw(`
+    SELECT DISTINCT
+      images.id,
+      images.name,
+      images.src,
+      images.alt
+    FROM
+      images,
+      userHistory,
+      users
+    WHERE
+      images.id = userHistory.imageid
+      AND users.id = userHistory.userid
+      AND images.id != ${itemId}
+    ORDER BY
+      rand() < 0.15
+    LIMIT 15;
+  `)
 }
 
 module.exports = { 
@@ -210,9 +232,9 @@ module.exports = {
   selectOneByName,
   selectRelated,
   selectSameCategory,
-  // getAlsoViewedFiller,
+  getAlsoViewedFiller,
   createUser,
   getUser,
-  // getUserHistory,
-  // recordViewa 
+  getUserHistory,
+  recordView 
 };

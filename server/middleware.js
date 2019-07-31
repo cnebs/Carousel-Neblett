@@ -1,4 +1,4 @@
-const db = require("../database/index.js");
+const db = require("../database/sql-index.js");
 
 const whitelist = [
   "http://fec-proxy.us-east-1.elasticbeanstalk.com",
@@ -24,15 +24,28 @@ const corsOptions = {
 };
 
 const itemLookup = async (req, res, next) => {
-    let id;
-    let regex = /[\/:. ]+/g;
-    if (req.method === 'POST') {
-      id = req.body.itemId.replace(regex, '');
-    } else if (req.method === 'GET') {
-      id = req.query.id.replace(regex, '');
-    }
-    req.body.item = await db.selectOneById(id);
-    next();
-  };
+  let id;
+  let regex = /[\/:. ]+/g;
+  if (req.method === 'POST') {
+     id = req.body.itemId.replace(regex, '');
+  } else if (req.method === 'GET') {
+    id = req.query.id.replace(regex, '');
+  }
 
-  module.exports = { itemLookup, corsOptions };
+  console.log('middleware req.body pre-func: ', req.body);
+
+  await db.selectOneById(id).then( result => {
+    console.log('knex selectOneById query result: ', result);
+    req.body.item = result;
+  })
+  .catch( error => {
+    console.log('knex selectOneById error: ', error);
+  });
+
+  console.log('middleware req.body.item post-func: ', req.body.item);
+
+  next();
+};
+
+
+module.exports = { itemLookup, corsOptions };

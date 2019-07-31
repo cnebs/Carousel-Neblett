@@ -1,7 +1,8 @@
 const express = require("express");
 const cookieParser = require("cookie-parser");
 const cors = require("cors");
-const db = require("../database/sql-index.js")
+const db = require("../database/index.js");
+const DB_MYSQL = require("../database/sql-index.js")
 const middleware = require("./middleware.js");
 const helpers = require("./helpers.js");
 const faker = require('faker');
@@ -75,22 +76,14 @@ app.get("/seedDaDB", (req, res) => {
 
 app.post("/users", middleware.itemLookup, async (req, res) => {
   try {
-    const item = req.body.item[0];
+    const item = req.body.item;
     let sessionId = req.cookies.user_session;
     if (!req.cookies.user_session) {
       sessionId = helpers.randomStringifiedNumberOfLength(32);
       await db.createUser(sessionId);
       res.cookie("user_session", sessionId);
     }
-    let user;
-    await db.getUser(sessionId)
-      .then( result => {
-        console.log('knex getUser query result: ', result[0]);
-        user = result[0];
-      })
-      .catch( error => {
-        console.log('knex getUser error: ', error);
-      });
+    const user = await db.getUser(sessionId);
     await db.recordView(user.id, item.id);
     res.status(201);
   } catch (err) {
@@ -99,69 +92,22 @@ app.post("/users", middleware.itemLookup, async (req, res) => {
     res.send();
   }
 });
-// const carousels = {};
-// db.selectRelated({
-//   id: 16,
-//   name: "Sleek Frozen Chips",
-//   src: "https://s3.amazonaws.com/uifaces/faces/twitter/yehudab/128.jpg",
-//   alt: "Sleek Frozen Chips",
-//   category: "Cheese",
-//   subCategory: "Shoes"})
-//   .then( result => {
-//     carousels.related = result;
-//     console.log('TESTESTEST', carousels.related)
-//   })
-//   .catch(err => console.log('TESTERR', err));
 
 app.get("/carousels", middleware.itemLookup, async (req, res) => {
-  const item = req.body.item[0];
+  const item = req.body.item;
   const carousels = {};
-  let sameCategory; 
-  let alsoViewedFiller;
 
-  await db.selectRelated(item)
-    .then( result => {
-      console.log('knex 15th selectRelated query result: ', result[14]);
-      carousels.related = result;
-    })
-    .catch( error => {
-      console.log('knex selectRelated error: ', error);
-    });
-
-  await db.selectSameCategory(item)
-    .then( result => {
-      console.log('knex FIRST selectSameCategory query result: ', result[0]);
-      sameCategory = result;
-    })
-    .catch( error => {
-      console.log('knex selectSameCategory error: ', error);
-    });
-
-  await db.getAlsoViewedFiller(item.id)
-    .then( result => {
-      console.log('knex getAlsoViewedFiller query result: ', result[0]);
-      alsoViewedFiller = result[0];
-    })
-    .catch( error => {
-      console.log('knex getAlsoViewedFiller error: ', error);
-    })
-
+  carousels.related = await db.selectRelated(item);
+  const sameCategory = await db.selectSameCategory(item);
+  const alsoViewedFiller = await db.getAlsoViewedFiller(item.id);
   carousels.alsoViewed = helpers.concatOnlyUnique(
     sameCategory,
     alsoViewedFiller
   );
-
-  await db.getUserHistory(
+  carousels.prevViewed = await db.getUserHistory(
     req.cookies.user_session,
     item.id
-  )
-  .then( result => {
-    console.log('knex getUserHistory query result: ', result[0]);
-    carousels.prevViewed = result[0];
-  })
-  .catch( error => {
-    console.log('knex getUserHistory error: ', error);
-  })
+  );
 
   res.send(carousels);
 });
