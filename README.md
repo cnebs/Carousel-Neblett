@@ -1,13 +1,10 @@
 # Project Name
 
-> Lowe's, but not!
+> Refactorization of the back-end of a microservice on a mock lowes website
 
 ## Related Projects
 
-  - https://github.com/teamName/repo
-  - https://github.com/teamName/repo
-  - https://github.com/teamName/repo
-  - https://github.com/teamName/repo
+  - https://github.com/mock-etsy
 
 ## Table of Contents
 
@@ -17,7 +14,9 @@
 
 ## Usage
 
-> Some usage instructions
+> This repo is a refactorization of a back-end of a single microservice
+> It can be cloned down
+> run npm install
 
 ## Requirements
 
@@ -27,6 +26,8 @@ An `nvmrc` file is included if using [nvm](https://github.com/creationix/nvm).
 - etc
 
 ## Development
+
+> A journal of some of the refactorization process can be found at: https://docs.google.com/document/d/1KChdETWCrUzrEB7gRguuXNLUjjTIVt-sVGZ51-nkz6k/edit#heading=h.ppn1fb91u9yu
 
 ### Installing Dependencies
 
