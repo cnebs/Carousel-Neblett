@@ -1,4 +1,4 @@
-# Project Name
+# Carousel Microservice Back-end Optimization
 
 > Refactorization of the back-end of a microservice on a mock lowes website
 
